@@ -1,42 +1,61 @@
-import { OAuth2Client } from 'google-auth-library';
-
-// OAuth client ID will need to be obtained from Google Cloud Console
-const CLIENT_ID = 'YOUR_CLIENT_ID';
-const SCOPES = ['https://www.googleapis.com/auth/bigquery'];
-
-let authClient: OAuth2Client | null = null;
+// Store tokens
 let accessToken: string | null = null;
 
-export const initAuth = (): OAuth2Client => {
-  if (!authClient) {
-    authClient = new OAuth2Client(CLIENT_ID);
+// Get the authentication URL from the backend
+export const getAuthUrl = async (): Promise<string> => {
+  try {
+    const response = await fetch('http://localhost:3001/api/auth/url');
+    const data = await response.json();
+    return data.authUrl;
+  } catch (error) {
+    console.error('Error getting auth URL:', error);
+    throw error;
   }
-  return authClient;
 };
 
-export const authenticate = async (): Promise<string> => {
-  const client = initAuth();
-  
-  const authUrl = client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-    prompt: 'consent',
-  });
-  
-  // Open the auth URL in a new window
-  window.open(authUrl, '_blank');
-  
-  // This is a simplified version. In a real application, you would need to handle the redirect and token exchange.
-  // For now, we'll simulate getting a token
-  return new Promise((resolve) => {
-    // In a real app, you would get the code from the redirect URL and exchange it for a token
-    setTimeout(() => {
-      accessToken = 'simulated_access_token';
-      resolve(accessToken);
-    }, 5000);
-  });
+// Exchange code for tokens
+export const exchangeCodeForToken = async (code: string): Promise<void> => {
+  try {
+    const response = await fetch('http://localhost:3001/api/auth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
+    
+    const data = await response.json();
+    accessToken = data.tokens.access_token;
+  } catch (error) {
+    console.error('Error exchanging code for token:', error);
+    throw error;
+  }
 };
 
+// Authenticate user
+export const authenticate = async (): Promise<void> => {
+  try {
+    const authUrl = await getAuthUrl();
+    
+    // Open the auth URL in a new window
+    window.open(authUrl, '_blank');
+    
+    // In a real application, you would handle the redirect and code exchange
+    // For now, we'll simulate getting a token
+    return new Promise((resolve) => {
+      // This is a placeholder. In a real app, you would get the code from the redirect URL
+      setTimeout(() => {
+        accessToken = 'simulated_access_token';
+        resolve();
+      }, 5000);
+    });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    throw error;
+  }
+};
+
+// Get the access token
 export const getAccessToken = (): string | null => {
   return accessToken;
 };

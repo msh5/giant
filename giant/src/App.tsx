@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import SqlEditor from './components/custom/SqlEditor'
 import ResultsTable from './components/custom/ResultsTable'
+import OAuthCallback from './components/custom/OAuthCallback'
 import { authenticate } from './services/auth'
 import { executeQuery } from './services/bigquery'
 
@@ -10,6 +11,21 @@ function App() {
   const [results, setResults] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Listen for OAuth callback success message
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'OAUTH_CALLBACK_SUCCESS') {
+        setAuthenticated(true);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   const handleAuthenticate = async () => {
     try {
@@ -39,6 +55,11 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Check if we're on the OAuth callback route
+  if (window.location.pathname === '/oauth-callback') {
+    return <OAuthCallback />;
   }
 
   return (

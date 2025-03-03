@@ -1,27 +1,28 @@
-import { BigQuery } from '@google-cloud/bigquery';
-
-let bigQueryClient: BigQuery | null = null;
-
-export const initBigQuery = (): BigQuery => {
-  if (!bigQueryClient) {
-    bigQueryClient = new BigQuery({
-      projectId: 'YOUR_PROJECT_ID',
-      // In a real application, you would use the access token from the OAuth flow
-      credentials: {
-        client_email: 'client_email',
-        private_key: 'private_key',
-      },
-    });
-  }
-  return bigQueryClient;
-};
+import { getAccessToken } from './auth';
 
 export const executeQuery = async (query: string): Promise<any[]> => {
-  const client = initBigQuery();
-  
   try {
-    const [rows] = await client.query(query);
-    return rows;
+    const accessToken = getAccessToken();
+    
+    if (!accessToken) {
+      throw new Error('Authentication required');
+    }
+    
+    const response = await fetch('http://localhost:3001/api/query', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, accessToken }),
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      return data.results;
+    } else {
+      throw new Error(data.error || 'Failed to execute query');
+    }
   } catch (error) {
     console.error('Error executing query:', error);
     throw error;
