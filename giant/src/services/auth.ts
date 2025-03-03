@@ -28,7 +28,9 @@ export const exchangeCodeForToken = async (code: string): Promise<void> => {
     accessToken = data.tokens.access_token;
     
     // Store the token in localStorage for persistence
-    localStorage.setItem('bigquery_access_token', accessToken);
+    if (accessToken) {
+      localStorage.setItem('bigquery_access_token', accessToken);
+    }
   } catch (error) {
     console.error('Error exchanging code for token:', error);
     throw error;
