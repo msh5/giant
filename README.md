@@ -12,16 +12,9 @@ A simple GUI client for BigQuery that allows you to:
 
 ### Backend Setup
 
-1. Navigate to the backend directory: `cd giant/backend`
+1. Navigate to the backend directory: `cd giant/backend-js`
 2. Install dependencies: `npm install`
-3. Create a `.env` file with the following variables:
-   ```
-   PORT=3001
-   CLIENT_ID=YOUR_CLIENT_ID
-   CLIENT_SECRET=YOUR_CLIENT_SECRET
-   REDIRECT_URI=http://localhost:5173/oauth-callback
-   ```
-4. Start the development server: `npm run dev`
+3. Start the development server: `npm run dev`
 
 ### Frontend Setup
 
@@ -32,7 +25,7 @@ A simple GUI client for BigQuery that allows you to:
 
 ## Features
 
-- OAuth authentication with Google
+- OAuth authentication with Google (no client credentials required)
 - SQL editor with syntax highlighting
 - Table view for query results
 

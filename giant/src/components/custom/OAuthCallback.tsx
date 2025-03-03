@@ -8,13 +8,14 @@ const OAuthCallback: React.FC = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the code from the URL
+        // Get the code and state from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
+        const state = urlParams.get('state');
         
-        if (code) {
+        if (code && state) {
           setStatus('Exchanging code for token...');
-          await exchangeCodeForToken(code);
+          await exchangeCodeForToken(code, state);
           
           // Notify the opener window and close this one
           if (window.opener) {
@@ -25,7 +26,7 @@ const OAuthCallback: React.FC = () => {
             window.location.href = '/';
           }
         } else {
-          setError('No authorization code found in the URL');
+          setError('No authorization code or state found in the URL');
         }
       } catch (error) {
         console.error('Error handling OAuth callback:', error);

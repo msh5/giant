@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { generateAuthUrl, getToken, getOAuth2Client } = require('./auth');
+const { generateAuthUrl, getToken, getOAuth2Client, verifyState } = require('./auth');
 const { executeQuery } = require('./bigquery');
 
 dotenv.config();
@@ -25,9 +25,14 @@ app.get('/api/auth/url', (req, res) => {
 
 app.post('/api/auth/token', (req, res) => {
   try {
-    const { code } = req.body;
-    getToken(code).then(tokens => {
-      res.json({ tokens });
+    const { code, state } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code is required' });
+    }
+    
+    getToken(code, state).then(result => {
+      res.json({ result });
     }).catch(error => {
       console.error('Error getting token:', error);
       res.status(500).json({ error: 'Failed to get token' });
