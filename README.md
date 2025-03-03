@@ -20,8 +20,9 @@ A simple GUI client for BigQuery that allows you to:
 
 1. Navigate to the frontend directory: `cd giant`
 2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
-4. Open [http://localhost:5173](http://localhost:5173) in your browser
+3. Install react-router-dom: `npm install react-router-dom`
+4. Start the development server: `npm run dev`
+5. Open [http://localhost:5173](http://localhost:5173) in your browser
 
 ## Features
 
