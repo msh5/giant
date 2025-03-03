@@ -13,6 +13,12 @@ function App() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Check if we have a token in localStorage
+    const token = localStorage.getItem('bigquery_access_token');
+    if (token) {
+      setAuthenticated(true);
+    }
+    
     // Listen for OAuth callback success message
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'OAUTH_CALLBACK_SUCCESS') {

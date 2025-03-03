@@ -26,6 +26,9 @@ export const exchangeCodeForToken = async (code: string): Promise<void> => {
     
     const data = await response.json();
     accessToken = data.tokens.access_token;
+    
+    // Store the token in localStorage for persistence
+    localStorage.setItem('bigquery_access_token', accessToken);
   } catch (error) {
     console.error('Error exchanging code for token:', error);
     throw error;
@@ -36,19 +39,7 @@ export const exchangeCodeForToken = async (code: string): Promise<void> => {
 export const authenticate = async (): Promise<void> => {
   try {
     const authUrl = await getAuthUrl();
-    
-    // Open the auth URL in a new window
-    window.open(authUrl, '_blank');
-    
-    // In a real application, you would handle the redirect and code exchange
-    // For now, we'll simulate getting a token
-    return new Promise((resolve) => {
-      // This is a placeholder. In a real app, you would get the code from the redirect URL
-      setTimeout(() => {
-        accessToken = 'simulated_access_token';
-        resolve();
-      }, 5000);
-    });
+    window.open(authUrl, '_blank', 'width=600,height=700');
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;
@@ -57,5 +48,16 @@ export const authenticate = async (): Promise<void> => {
 
 // Get the access token
 export const getAccessToken = (): string | null => {
+  // If we have a token in memory, use it
+  if (accessToken) {
+    return accessToken;
+  }
+  
+  // Otherwise, try to get it from localStorage
+  const storedToken = localStorage.getItem('bigquery_access_token');
+  if (storedToken) {
+    accessToken = storedToken;
+  }
+  
   return accessToken;
 };

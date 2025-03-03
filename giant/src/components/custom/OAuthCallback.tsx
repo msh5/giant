@@ -1,7 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { exchangeCodeForToken } from '../../services/auth';
 
 const OAuthCallback: React.FC = () => {
+  const [status, setStatus] = useState<string>('Processing authentication...');
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     const handleCallback = async () => {
       try {
@@ -10,12 +13,23 @@ const OAuthCallback: React.FC = () => {
         const code = urlParams.get('code');
         
         if (code) {
+          setStatus('Exchanging code for token...');
           await exchangeCodeForToken(code);
-          window.opener.postMessage({ type: 'OAUTH_CALLBACK_SUCCESS' }, '*');
-          window.close();
+          
+          // Notify the opener window and close this one
+          if (window.opener) {
+            window.opener.postMessage({ type: 'OAUTH_CALLBACK_SUCCESS' }, '*');
+            window.close();
+          } else {
+            // If no opener, redirect to the main page
+            window.location.href = '/';
+          }
+        } else {
+          setError('No authorization code found in the URL');
         }
       } catch (error) {
         console.error('Error handling OAuth callback:', error);
+        setError('Failed to process authentication');
       }
     };
     
@@ -23,8 +37,9 @@ const OAuthCallback: React.FC = () => {
   }, []);
   
   return (
-    <div className="flex justify-center items-center h-screen">
-      <p>Processing authentication, please wait...</p>
+    <div className="flex flex-col justify-center items-center h-screen">
+      <h2 className="text-xl font-semibold mb-4">{status}</h2>
+      {error && <p className="text-red-500">{error}</p>}
     </div>
   );
 };
