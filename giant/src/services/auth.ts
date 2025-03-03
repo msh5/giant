@@ -24,7 +24,7 @@ export const exchangeCodeForToken = async (code: string, state: string): Promise
       body: JSON.stringify({ code, state }),
     });
     
-    const data = await response.json();
+    await response.json();
     
     // In this simplified implementation, we're using the code directly
     // In a real implementation, we would use the tokens returned from the backend
