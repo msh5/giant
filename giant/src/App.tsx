@@ -71,7 +71,7 @@ function App() {
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
-        <h1 className="text-3xl font-bold">BigQuery GUI Client</h1>
+        <h1 className="text-3xl font-bold">Giant</h1>
       </header>
       <main>
         <div className="mb-8">
