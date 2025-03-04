@@ -12,10 +12,6 @@ A desktop client for BigQuery that allows you to:
    ```
    gcloud auth application-default login
    ```
-3. Set your Google Cloud project:
-   ```
-   gcloud config set project YOUR_PROJECT_ID
-   ```
 
 ## Getting Started
 
