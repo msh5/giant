@@ -1,0 +1,33 @@
+/* Custom styles for BigQuery GUI Client */
+
+/* Since we're using Tailwind CSS for most of the styling, we only need minimal custom CSS */
+
+/* Ensure the SQL editor has proper spacing */
+.sql-editor {
+  margin-bottom: 1rem;
+}
+
+/* Add some custom styling for the ACE editor */
+.ace_editor {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+/* Custom scrollbar for the results table */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
