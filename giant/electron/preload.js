@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  executeQuery: (query) => ipcRenderer.invoke('execute-query', query),
+  executeQuery: (query, projectId) => ipcRenderer.invoke('execute-query', query, projectId),
 });
 
 // Expose platform information

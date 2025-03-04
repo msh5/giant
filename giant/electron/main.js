@@ -3,11 +3,8 @@ const path = require('path');
 const { BigQuery } = require('@google-cloud/bigquery');
 const fs = require('fs');
 
-// Create BigQuery client with application default credentials
-const bigquery = new BigQuery({
-  // No need to specify credentials, will use application default credentials
-  projectId: process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
-});
+// We'll create the BigQuery client dynamically when executing queries
+let bigquery = null;
 
 let mainWindow;
 
@@ -59,8 +56,14 @@ app.on('window-all-closed', () => {
 });
 
 // Handle BigQuery query execution
-ipcMain.handle('execute-query', async (event, query) => {
+ipcMain.handle('execute-query', async (event, query, projectId) => {
   try {
+    // Create or update BigQuery client with the provided project ID
+    bigquery = new BigQuery({
+      // No need to specify credentials, will use application default credentials
+      projectId: projectId || process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
+    });
+    
     const [rows] = await bigquery.query(query);
     return rows;
   } catch (error) {

@@ -7,7 +7,7 @@ import './index.css'
 declare global {
   interface Window {
     electronAPI?: {
-      executeQuery: (query: string) => Promise<any[]>;
+      executeQuery: (query: string, projectId: string) => Promise<any[]>;
     };
     platform?: {
       isElectron: boolean;
