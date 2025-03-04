@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { BigQuery } = require('@google-cloud/bigquery');
+const fs = require('fs');
 
 // Create BigQuery client with application default credentials
 const bigquery = new BigQuery({
@@ -27,7 +28,17 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load from built files
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    
+    // Check if the file exists
+    if (fs.existsSync(indexPath)) {
+      mainWindow.loadFile(indexPath);
+    } else {
+      console.error(`Error: Could not find ${indexPath}`);
+      // Fallback to development URL if dist file doesn't exist
+      mainWindow.loadURL('http://localhost:5173');
+      mainWindow.webContents.openDevTools();
+    }
   }
 
   mainWindow.on('closed', () => {
