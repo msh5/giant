@@ -4,8 +4,6 @@ A desktop client for BigQuery that allows you to:
 - Send SQL queries to BigQuery
 - View query results in a table format
 
-## Screenshot
-![Giant Application Screenshot](giant/screenshots/giant-app-screenshot.png)
 
 ## Prerequisites
 
