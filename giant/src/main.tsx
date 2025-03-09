@@ -8,6 +8,8 @@ declare global {
   interface Window {
     electronAPI?: {
       executeQuery: (query: string, projectId: string) => Promise<any[]>;
+      estimateQuerySize: (query: string, projectId: string) => Promise<string>;
+      confirmLargeQuery: (bytesProcessed: string, warnSizeBytes: string, showAlways: boolean) => Promise<{confirmed: boolean, dontShowAgain: boolean}>;
     };
     platform?: {
       isElectron: boolean;
