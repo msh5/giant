@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { BigQuery } = require('@google-cloud/bigquery');
 const fs = require('fs');
@@ -71,3 +71,68 @@ ipcMain.handle('execute-query', async (event, query, projectId) => {
     throw error;
   }
 });
+
+// Handle dry run query to estimate size
+ipcMain.handle('estimate-query-size', async (event, query, projectId) => {
+  try {
+    // Create or update BigQuery client with the provided project ID
+    bigquery = new BigQuery({
+      projectId: projectId || process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
+    });
+    
+    // Create a dry run job to estimate query size
+    const [job] = await bigquery.createQueryJob({
+      query: query,
+      dryRun: true,
+    });
+    
+    // Return the total bytes processed
+    return job.metadata.statistics.totalBytesProcessed;
+  } catch (error) {
+    console.error('Error estimating query size:', error);
+    throw error;
+  }
+});
+
+// Handle confirmation dialog for large queries
+ipcMain.handle('confirm-large-query', async (event, bytesProcessed, warnSizeBytes, showAlways) => {
+  try {
+    // Format bytes for display
+    const formattedBytes = formatBytes(bytesProcessed);
+    const formattedWarnSize = formatBytes(parseInt(warnSizeBytes));
+    
+    // Show confirmation dialog
+    const { response, checkboxChecked } = await dialog.showMessageBox({
+      type: 'warning',
+      buttons: ['Yes', 'No'],
+      title: 'Query Size Warning',
+      message: 'This query will process a large amount of data',
+      detail: `This query will process ${formattedBytes} of data${bytesProcessed > parseInt(warnSizeBytes) ? `, which exceeds your warning threshold of ${formattedWarnSize}` : ''}.
+Do you want to continue?`,
+      checkboxLabel: 'Don\'t show this warning again',
+      checkboxChecked: false,
+    });
+    
+    // Return result object with user response and checkbox state
+    return {
+      confirmed: response === 0, // true if user clicked "Yes" (index 0)
+      dontShowAgain: checkboxChecked
+    };
+  } catch (error) {
+    console.error('Error showing confirmation dialog:', error);
+    throw error;
+  }
+});
+
+// Helper function to format bytes to human-readable format
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
