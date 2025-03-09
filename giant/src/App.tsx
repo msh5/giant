@@ -10,6 +10,8 @@ function App() {
   const [results, setResults] = useState<any[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(10)
   const [projectId, setProjectId] = useState<string>(() => {
     // Initialize from localStorage if available
     return localStorage.getItem('bigquery_project_id') || '';
@@ -50,7 +52,9 @@ function App() {
   const handleExecuteQuery = async (query: string) => {
     setLoading(true)
     setError(null)
-
+    // Reset to first page when executing a new query
+    setCurrentPage(1)
+    
     try {
       if (isElectron && window.electronAPI) {
         // Estimate query size first
@@ -92,6 +96,11 @@ function App() {
       setLoading(false)
     }
   }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -152,7 +161,14 @@ function App() {
         </div>
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Results</h2>
-          <ResultsTable data={results} loading={loading} error={error} />
+          <ResultsTable 
+            data={results} 
+            loading={loading} 
+            error={error} 
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+          />
         </div>
       </main>
     </div>
