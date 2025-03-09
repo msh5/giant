@@ -146,23 +146,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({
                   <span className="sr-only">Previous</span>
                   &lt;
                 </button>
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum = i + 1;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => onPageChange(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                        pageNum === currentPage
-                          ? 'bg-blue-600 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                          : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
+                {/* Page indicator - removed numbered buttons as requested */}
                 {/* Next page button */}
                 <button
                   onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
