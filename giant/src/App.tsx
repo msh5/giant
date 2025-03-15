@@ -5,12 +5,16 @@ import ResultsTable from './components/custom/ResultsTable'
 import JobInfoTable from './components/custom/JobInfoTable'
 import TabView from './components/custom/TabView'
 import SessionsPane, { Session } from './components/custom/SessionsPane'
+import SettingsPage from './components/custom/SettingsPage'
 import { v4 as uuidv4 } from 'uuid'
 
 // Check if running in Electron
 const isElectron = window.platform?.isElectron || false;
 
 function App() {
+  // View state
+  const [currentView, setCurrentView] = useState<'query' | 'settings'>('query');
+  
   // Sessions state
   const [sessions, setSessions] = useState<Session[]>(() => {
     // Initialize from localStorage if available
@@ -230,6 +234,8 @@ function App() {
       setJobInfo(session.jobInfo || null);
       // Reset to first page
       setCurrentPage(1);
+      // Switch to query view if in settings view
+      setCurrentView('query');
     }
   };
   
@@ -278,6 +284,14 @@ function App() {
   // Get current active session
   const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : null;
 
+  // Handle settings button click
+  const handleSettingsClick = () => {
+    // Only toggle to settings view, don't toggle back to query view
+    if (currentView === 'query') {
+      setCurrentView('settings');
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       <SessionsPane 
@@ -286,140 +300,67 @@ function App() {
         onSessionSelect={handleSessionSelect}
         onSessionCreate={handleSessionCreate}
         onSessionDelete={handleSessionDelete}
+        onSettingsClick={handleSettingsClick}
       />
       <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4 py-8">
-
-          <main>
-            <div className="mb-4">
-              <h2 className="text-2xl font-semibold mb-4">Project Settings</h2>
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center">
-              <label htmlFor="projectId" className="block text-sm font-medium text-gray-700 mr-2 w-64">
-                Google Cloud Project ID:
-              </label>
-              <input
-                type="text"
-                id="projectId"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                placeholder="your-project-id"
-              />
-            </div>
-            <div className="flex items-center">
-              <label htmlFor="warnSizeBytes" className="block text-sm font-medium text-gray-700 mr-2 w-64">
-                Query Size Warning Threshold (bytes):
-              </label>
-              <input
-                type="text"
-                id="warnSizeBytes"
-                value={warnSizeBytes}
-                onChange={(e) => setWarnSizeBytes(e.target.value)}
-                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                placeholder="1073741824"
-              />
-              <span className="ml-2 text-sm text-gray-500">
-                {formatBytes(parseInt(warnSizeBytes) || 0)}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="showQuerySizeWarning"
-                checked={showQuerySizeWarning}
-                onChange={(e) => setShowQuerySizeWarning(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="showQuerySizeWarning" className="ml-2 block text-sm text-gray-900">
-                Always show query size warning dialog
-              </label>
-            </div>
-            <div className="flex items-center">
-              <label htmlFor="defaultDataset" className="block text-sm font-medium text-gray-700 mr-2 w-64">
-                Default Dataset:
-              </label>
-              <select
-                id="defaultDataset"
-                value={defaultDataset?.datasetId || ''}
-                onChange={(e) => {
-                  if (e.target.value === '') {
-                    setDefaultDataset(null);
-                  } else {
-                    const dataset = availableDatasets.find(ds => ds.id === e.target.value);
-                    if (dataset) {
-                      setDefaultDataset({
-                        datasetId: dataset.id,
-                        projectId: dataset.projectId
-                      });
+        {currentView === 'settings' ? (
+          <SettingsPage 
+            projectId={projectId}
+            setProjectId={setProjectId}
+            warnSizeBytes={warnSizeBytes}
+            setWarnSizeBytes={setWarnSizeBytes}
+            showQuerySizeWarning={showQuerySizeWarning}
+            setShowQuerySizeWarning={setShowQuerySizeWarning}
+            defaultDataset={defaultDataset}
+            setDefaultDataset={setDefaultDataset}
+            availableDatasets={availableDatasets}
+            queryLocation={queryLocation}
+            setQueryLocation={setQueryLocation}
+            locationOptions={locationOptions}
+          />
+        ) : (
+          <div className="container mx-auto px-4 py-8">
+            <main>
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">SQL Query</h2>
+                <SqlEditor 
+                  onExecute={handleExecuteQuery} 
+                  initialValue={activeSession?.query || ''}
+                />
+              </div>
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">Results</h2>
+                <TabView
+                  tabs={[
+                    {
+                      label: 'Job Information',
+                      content: (
+                        <JobInfoTable
+                          jobInfo={jobInfo}
+                          loading={loading}
+                          error={error}
+                        />
+                      )
+                    },
+                    {
+                      label: 'Query Results',
+                      content: (
+                        <ResultsTable 
+                          data={results} 
+                          loading={loading} 
+                          error={error} 
+                          currentPage={currentPage}
+                          pageSize={pageSize}
+                          onPageChange={handlePageChange}
+                        />
+                      )
                     }
-                  }
-                }}
-                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-              >
-                <option value="">-- Select Dataset --</option>
-                {availableDatasets.map(dataset => (
-                  <option key={dataset.id} value={dataset.id}>{dataset.id}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center">
-              <label htmlFor="queryLocation" className="block text-sm font-medium text-gray-700 mr-2 w-64">
-                Query Execution Location:
-              </label>
-              <select
-                id="queryLocation"
-                value={queryLocation || ''}
-                onChange={(e) => setQueryLocation(e.target.value || null)}
-                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-              >
-                <option value="">-- Select Location --</option>
-                {locationOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
+                  ]}
+                />
+              </div>
+            </main>
           </div>
-        </div>
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">SQL Query</h2>
-          <SqlEditor 
-            onExecute={handleExecuteQuery} 
-            initialValue={activeSession?.query || ''}
-          />
-        </div>
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Results</h2>
-          <TabView
-            tabs={[
-              {
-                label: 'Job Information',
-                content: (
-                  <JobInfoTable
-                    jobInfo={jobInfo}
-                    loading={loading}
-                    error={error}
-                  />
-                )
-              },
-              {
-                label: 'Query Results',
-                content: (
-                  <ResultsTable 
-                    data={results} 
-                    loading={loading} 
-                    error={error} 
-                    currentPage={currentPage}
-                    pageSize={pageSize}
-                    onPageChange={handlePageChange}
-                  />
-                )
-              }
-            ]}
-          />
-        </div>
-      </main>
-        </div>
+        )}
       </div>
     </div>
   )
