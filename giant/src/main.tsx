@@ -11,6 +11,9 @@ declare global {
       estimateQuerySize: (query: string, projectId: string, defaultDataset?: {datasetId: string, projectId?: string}, location?: string) => Promise<string>;
       confirmLargeQuery: (bytesProcessed: string, warnSizeBytes: string, showAlways: boolean) => Promise<{confirmed: boolean, dontShowAgain: boolean}>;
       listDatasets: (projectId: string) => Promise<Array<{id: string, projectId: string, location: string}>>;
+      openProjectInNewWindow: (projectId: string) => Promise<{success: boolean, message?: string}>;
+      getCurrentProjectId: () => Promise<{success: boolean, projectId?: string, message?: string}>;
+      setCurrentProjectId: (projectId: string) => Promise<{success: boolean, message?: string}>;
     };
     platform?: {
       isElectron: boolean;

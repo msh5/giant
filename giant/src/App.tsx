@@ -93,10 +93,37 @@ function App() {
     { value: 'ASIA', label: 'Asia (multi-region)' }
   ];
 
+  // Check if we have a project ID from the window
+  useEffect(() => {
+    const checkWindowProjectId = async () => {
+      if (isElectron && window.electronAPI) {
+        try {
+          const result = await window.electronAPI.getCurrentProjectId();
+          if (result.success && result.projectId) {
+            setProjectId(result.projectId);
+          }
+        } catch (error) {
+          console.error('Error checking window project ID:', error);
+        }
+      }
+    };
+    
+    checkWindowProjectId();
+  }, []);
+  
   // Save projectId to localStorage whenever it changes
   useEffect(() => {
     if (projectId) {
       localStorage.setItem('bigquery_project_id', projectId);
+      
+      // Sync with window project ID
+      if (isElectron && window.electronAPI) {
+        try {
+          window.electronAPI.setCurrentProjectId(projectId);
+        } catch (error) {
+          console.error('Error syncing project ID with window:', error);
+        }
+      }
     }
   }, [projectId]);
   
@@ -284,6 +311,17 @@ function App() {
   // Get current active session
   const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : null;
 
+  // Handle opening a project in a new window
+  const handleOpenProjectInNewWindow = async (newProjectId: string) => {
+    if (isElectron && window.electronAPI) {
+      try {
+        await window.electronAPI.openProjectInNewWindow(newProjectId);
+      } catch (error) {
+        console.error('Error opening project in new window:', error);
+      }
+    }
+  };
+
   // Handle settings button click
   const handleSettingsClick = () => {
     // Only toggle to settings view, don't toggle back to query view
@@ -301,6 +339,8 @@ function App() {
         onSessionCreate={handleSessionCreate}
         onSessionDelete={handleSessionDelete}
         onSettingsClick={handleSettingsClick}
+        onOpenProjectInNewWindow={handleOpenProjectInNewWindow}
+        currentProjectId={projectId}
       />
       <div className="flex-1 overflow-y-auto">
         {currentView === 'settings' ? (
