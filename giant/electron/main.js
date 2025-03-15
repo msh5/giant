@@ -9,19 +9,165 @@ let bigquery = null;
 // Track windows and their associated GCP project IDs
 const windowProjects = new Map();
 
+// Function to prompt for project ID
+async function promptForProjectId() {
+  return new Promise((resolve) => {
+    // Create a small browser window for the prompt
+    const promptWindow = new BrowserWindow({
+      width: 400,
+      height: 200,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      parent: null,
+      modal: true,
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        enableRemoteModule: false,
+      }
+    });
+    
+    // HTML content for the prompt
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Enter Project ID</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            color: #333;
+          }
+          h3 {
+            margin-top: 0;
+          }
+          input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0 15px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+          }
+          .buttons {
+            display: flex;
+            justify-content: flex-end;
+          }
+          button {
+            padding: 8px 16px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+          .cancel {
+            background-color: #f1f1f1;
+          }
+          .ok {
+            background-color: #4285f4;
+            color: white;
+          }
+        </style>
+      </head>
+      <body>
+        <h3>Project ID Required</h3>
+        <p>Please enter your Google Cloud Project ID:</p>
+        <input type="text" id="projectId" placeholder="your-project-id" autofocus />
+        <div class="buttons">
+          <button class="cancel" id="cancel">Cancel</button>
+          <button class="ok" id="ok">OK</button>
+        </div>
+        <script>
+          const input = document.getElementById('projectId');
+          const okButton = document.getElementById('ok');
+          const cancelButton = document.getElementById('cancel');
+          
+          // Submit on Enter key
+          input.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+              submitValue();
+            }
+          });
+          
+          // Submit on OK button click
+          okButton.addEventListener('click', submitValue);
+          
+          // Cancel on Cancel button click
+          cancelButton.addEventListener('click', () => {
+            window.electronAPI.submitProjectId('');
+          });
+          
+          function submitValue() {
+            const value = input.value.trim();
+            if (value) {
+              window.electronAPI.submitProjectId(value);
+            }
+          }
+        </script>
+      </body>
+      </html>
+    `;
+    
+    // Set up IPC for the prompt window
+    const preloadScript = `
+      const { contextBridge, ipcRenderer } = require('electron');
+      
+      contextBridge.exposeInMainWorld('electronAPI', {
+        submitProjectId: (projectId) => ipcRenderer.send('submit-project-id', projectId)
+      });
+    `;
+    
+    // Write preload script to a temporary file
+    const preloadPath = path.join(app.getPath('temp'), 'project-id-preload.js');
+    fs.writeFileSync(preloadPath, preloadScript);
+    
+    // Update webPreferences to use the preload script
+    promptWindow.webPreferences = {
+      ...promptWindow.webPreferences,
+      preload: preloadPath
+    };
+    
+    // Load HTML content
+    promptWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    
+    // Show window when ready
+    promptWindow.once('ready-to-show', () => {
+      promptWindow.show();
+    });
+    
+    // Handle project ID submission
+    ipcMain.once('submit-project-id', (event, projectId) => {
+      promptWindow.close();
+      resolve(projectId);
+    });
+    
+    // Handle window close
+    promptWindow.on('closed', () => {
+      ipcMain.removeAllListeners('submit-project-id');
+      if (!promptWindow.isDestroyed()) {
+        promptWindow.destroy();
+      }
+      resolve(null);
+    });
+  });
+}
+
 let mainWindow;
 
-function createWindow(projectId) {
-  // Require a project ID to create a window
+async function createWindow(projectId) {
+  // If no project ID is provided, prompt for one
   if (!projectId) {
-    dialog.showErrorMessageBox({
-      type: 'error',
-      title: 'Project ID Required',
-      message: 'A project ID is required to start the application.',
-      detail: 'Please provide a project ID using the --project-id=your-project-id command line argument.',
-    });
-    app.quit();
-    return null;
+    projectId = await promptForProjectId();
+    
+    // If user cancels or doesn't provide a project ID, quit the app
+    if (!projectId) {
+      app.quit();
+      return null;
+    }
   }
   
   const win = new BrowserWindow({
@@ -67,43 +213,27 @@ function createWindow(projectId) {
   return win;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Check if we have a project ID in the arguments
   const projectIdArg = process.argv.find(arg => arg.startsWith('--project-id='));
   const projectId = projectIdArg ? projectIdArg.split('=')[1] : null;
   
-  // Require a project ID to start the application
-  if (!projectId) {
-    dialog.showErrorBox(
-      'Project ID Required',
-      'A project ID is required to start the application.\n\nPlease provide a project ID using the --project-id=your-project-id command line argument.'
-    );
-    app.quit();
-    return;
-  }
-  
-  // Create main window with project ID
-  mainWindow = createWindow(projectId);
+  // Create main window with project ID (will prompt if null)
+  mainWindow = await createWindow(projectId);
 
-  app.on('activate', () => {
+  app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      // Require a project ID when creating a new window
+      // Check if we have a project ID in the arguments
       const projectIdArg = process.argv.find(arg => arg.startsWith('--project-id='));
       const projectId = projectIdArg ? projectIdArg.split('=')[1] : null;
       
-      if (projectId) {
-        mainWindow = createWindow(projectId);
-      } else {
-        dialog.showErrorBox(
-          'Project ID Required',
-          'A project ID is required to start the application.\n\nPlease provide a project ID using the --project-id=your-project-id command line argument.'
-        );
-      }
+      // Create a new window with project ID (will prompt if null)
+      mainWindow = await createWindow(projectId);
     }
   });
   
   // Handle second instance
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
+  app.on('second-instance', async (event, commandLine, workingDirectory) => {
     // Check if the second instance has a project ID
     const projectIdArg = commandLine.find(arg => arg.startsWith('--project-id='));
     const projectId = projectIdArg ? projectIdArg.split('=')[1] : null;
@@ -120,12 +250,17 @@ app.whenReady().then(() => {
         }
       }
       // If not open, create a new window with this project
-      createWindow(projectId);
+      await createWindow(projectId);
     } else {
-      // Focus the main window
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
+      // If no project ID is provided, create a new window (will prompt for project ID)
+      if (BrowserWindow.getAllWindows().length === 0) {
+        await createWindow(null);
+      } else {
+        // Focus the main window
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
       }
     }
   });
@@ -299,7 +434,7 @@ ipcMain.handle('open-project-in-new-window', async (event, projectId) => {
     }
     
     // Create a new window with this project
-    createWindow(projectId);
+    await createWindow(projectId);
     return { success: true };
   } catch (error) {
     console.error('Error opening project in new window:', error);
