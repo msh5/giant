@@ -302,6 +302,7 @@ function App() {
             onSessionSelect={handleSessionSelect}
             onSessionCreate={handleSessionCreate}
             onSessionDelete={handleSessionDelete}
+            onSettingsClick={handleSettingsClick}
           />
         )}
       </div>
