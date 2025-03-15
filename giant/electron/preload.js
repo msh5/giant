@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openProjectInNewWindow: (projectId) => ipcRenderer.invoke('open-project-in-new-window', projectId),
   getCurrentProjectId: () => ipcRenderer.invoke('get-current-project-id'),
   setCurrentProjectId: (projectId) => ipcRenderer.invoke('set-current-project-id', projectId),
+  promptForProjectId: (title) => ipcRenderer.invoke('prompt-for-project-id', title),
 });
 
 // Expose platform information

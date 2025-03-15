@@ -14,6 +14,7 @@ declare global {
       openProjectInNewWindow: (projectId: string) => Promise<{success: boolean, message?: string}>;
       getCurrentProjectId: () => Promise<{success: boolean, projectId?: string, message?: string}>;
       setCurrentProjectId: (projectId: string) => Promise<{success: boolean, message?: string}>;
+      promptForProjectId: (title?: string) => Promise<{success: boolean, projectId?: string, message?: string}>;
     };
     platform?: {
       isElectron: boolean;

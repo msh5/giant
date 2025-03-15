@@ -345,8 +345,6 @@ function App() {
       <div className="flex-1 overflow-y-auto">
         {currentView === 'settings' ? (
           <SettingsPage 
-            projectId={projectId}
-            setProjectId={setProjectId}
             warnSizeBytes={warnSizeBytes}
             setWarnSizeBytes={setWarnSizeBytes}
             showQuerySizeWarning={showQuerySizeWarning}

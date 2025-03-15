@@ -21,6 +21,9 @@ interface SessionsPaneProps {
   currentProjectId?: string;
 }
 
+// Check if running in Electron
+const isElectron = window.platform?.isElectron || false;
+
 const SessionsPane: React.FC<SessionsPaneProps> = ({
   sessions,
   activeSessionId,
@@ -94,10 +97,16 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
             {onOpenProjectInNewWindow && (
               <div className="flex space-x-2">
                 <button
-                  onClick={() => {
-                    const newProjectId = prompt('Enter project ID to open in new window:');
-                    if (newProjectId) {
-                      onOpenProjectInNewWindow(newProjectId);
+                  onClick={async () => {
+                    if (isElectron && window.electronAPI) {
+                      try {
+                        const result = await window.electronAPI.promptForProjectId('Open Project in New Window');
+                        if (result.success && result.projectId) {
+                          onOpenProjectInNewWindow(result.projectId);
+                        }
+                      } catch (error) {
+                        console.error('Error prompting for project ID:', error);
+                      }
                     }
                   }}
                   className="py-1 px-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-xs"

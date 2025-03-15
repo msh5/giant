@@ -10,7 +10,7 @@ let bigquery = null;
 const windowProjects = new Map();
 
 // Function to prompt for project ID
-async function promptForProjectId() {
+async function promptForProjectId(title = 'Project ID Required') {
   return new Promise((resolve) => {
     // Set up IPC for the prompt window
     const preloadScript = `
@@ -49,7 +49,7 @@ async function promptForProjectId() {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Enter Project ID</title>
+        <title>${title}</title>
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -88,7 +88,7 @@ async function promptForProjectId() {
         </style>
       </head>
       <body>
-        <h3>Project ID Required</h3>
+        <h3>${title}</h3>
         <p>Please enter your Google Cloud Project ID:</p>
         <input type="text" id="projectId" placeholder="your-project-id" autofocus />
         <div class="buttons">
@@ -466,6 +466,17 @@ ipcMain.handle('set-current-project-id', async (event, projectId) => {
     return { success: true };
   } catch (error) {
     console.error('Error setting current project ID:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle prompting for a project ID from the renderer process
+ipcMain.handle('prompt-for-project-id', async (event, title = 'Enter Project ID') => {
+  try {
+    const projectId = await promptForProjectId(title);
+    return { success: true, projectId };
+  } catch (error) {
+    console.error('Error prompting for project ID:', error);
     return { success: false, message: error.message };
   }
 });

@@ -1,8 +1,6 @@
 import React from 'react';
 
 interface SettingsPageProps {
-  projectId: string;
-  setProjectId: (id: string) => void;
   warnSizeBytes: string;
   setWarnSizeBytes: (size: string) => void;
   showQuerySizeWarning: boolean;
@@ -16,8 +14,6 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({
-  projectId,
-  setProjectId,
   warnSizeBytes,
   setWarnSizeBytes,
   showQuerySizeWarning,
@@ -44,24 +40,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Project Settings</h2>
-        <div className="flex flex-col space-y-4">
-          <div className="flex items-center">
-            <label htmlFor="projectId" className="block text-sm font-medium text-gray-700 mr-2 w-64">
-              Google Cloud Project ID:
-            </label>
-            <input
-              type="text"
-              id="projectId"
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-              placeholder="your-project-id"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Project Settings section removed as requested */}
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Query Settings</h2>
