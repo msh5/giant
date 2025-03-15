@@ -29,6 +29,48 @@ function App() {
     const savedPref = localStorage.getItem('bigquery_show_size_warning');
     return savedPref === null ? true : savedPref === 'true';
   });
+  
+  // Add new state for default dataset and location (non-persistent)
+  const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, projectId: string, location: string}>>([]);
+  const [defaultDataset, setDefaultDataset] = useState<{datasetId: string, projectId?: string} | null>(null);
+  const [queryLocation, setQueryLocation] = useState<string | null>(null);
+  
+  // Define location options with specific regions
+  const locationOptions = [
+    // US regions
+    { value: 'us-central1', label: 'us-central1 (Iowa)' },
+    { value: 'us-east1', label: 'us-east1 (South Carolina)' },
+    { value: 'us-east4', label: 'us-east4 (Northern Virginia)' },
+    { value: 'us-west1', label: 'us-west1 (Oregon)' },
+    { value: 'us-west2', label: 'us-west2 (Los Angeles)' },
+    { value: 'us-west3', label: 'us-west3 (Salt Lake City)' },
+    { value: 'us-west4', label: 'us-west4 (Las Vegas)' },
+    
+    // Europe regions
+    { value: 'europe-west1', label: 'europe-west1 (Belgium)' },
+    { value: 'europe-west2', label: 'europe-west2 (London)' },
+    { value: 'europe-west3', label: 'europe-west3 (Frankfurt)' },
+    { value: 'europe-west4', label: 'europe-west4 (Netherlands)' },
+    { value: 'europe-west6', label: 'europe-west6 (Zurich)' },
+    
+    // Asia regions
+    { value: 'asia-east1', label: 'asia-east1 (Taiwan)' },
+    { value: 'asia-east2', label: 'asia-east2 (Hong Kong)' },
+    { value: 'asia-northeast1', label: 'asia-northeast1 (Tokyo)' },
+    { value: 'asia-northeast2', label: 'asia-northeast2 (Osaka)' },
+    { value: 'asia-northeast3', label: 'asia-northeast3 (Seoul)' },
+    { value: 'asia-south1', label: 'asia-south1 (Mumbai)' },
+    { value: 'asia-southeast1', label: 'asia-southeast1 (Singapore)' },
+    { value: 'asia-southeast2', label: 'asia-southeast2 (Jakarta)' },
+    
+    // Australia regions
+    { value: 'australia-southeast1', label: 'australia-southeast1 (Sydney)' },
+    
+    // Multi-regional options
+    { value: 'US', label: 'US (multi-region)' },
+    { value: 'EU', label: 'EU (multi-region)' },
+    { value: 'ASIA', label: 'Asia (multi-region)' }
+  ];
 
   // Save projectId to localStorage whenever it changes
   useEffect(() => {
@@ -48,6 +90,26 @@ function App() {
   useEffect(() => {
     localStorage.setItem('bigquery_show_size_warning', showQuerySizeWarning.toString());
   }, [showQuerySizeWarning]);
+  
+  // Fetch datasets when projectId changes
+  useEffect(() => {
+    const fetchDatasets = async () => {
+      if (!projectId || !isElectron || !window.electronAPI) {
+        setAvailableDatasets([]);
+        return;
+      }
+      
+      try {
+        const datasets = await window.electronAPI.listDatasets(projectId);
+        setAvailableDatasets(datasets);
+      } catch (error) {
+        console.error('Error fetching datasets:', error);
+        setAvailableDatasets([]);
+      }
+    };
+    
+    fetchDatasets();
+  }, [projectId]);
 
   const handleExecuteQuery = async (query: string) => {
     setLoading(true)
@@ -58,7 +120,7 @@ function App() {
     try {
       if (isElectron && window.electronAPI) {
         // Estimate query size first
-        const bytesProcessed = await window.electronAPI.estimateQuerySize(query, projectId);
+        const bytesProcessed = await window.electronAPI.estimateQuerySize(query, projectId, defaultDataset || undefined, queryLocation || undefined);
         
         // Check if we should show warning dialog
         let shouldExecute = true;
@@ -78,7 +140,7 @@ function App() {
         
         if (shouldExecute) {
           // Execute the query if user confirmed or warning was skipped
-          const data = await window.electronAPI.executeQuery(query, projectId);
+          const data = await window.electronAPI.executeQuery(query, projectId, defaultDataset || undefined, queryLocation || undefined);
           setResults(data);
         } else {
           // User cancelled the query
@@ -152,6 +214,50 @@ function App() {
               <label htmlFor="showQuerySizeWarning" className="ml-2 block text-sm text-gray-900">
                 Always show query size warning dialog
               </label>
+            </div>
+            <div className="flex items-center">
+              <label htmlFor="defaultDataset" className="block text-sm font-medium text-gray-700 mr-2 w-64">
+                Default Dataset:
+              </label>
+              <select
+                id="defaultDataset"
+                value={defaultDataset?.datasetId || ''}
+                onChange={(e) => {
+                  if (e.target.value === '') {
+                    setDefaultDataset(null);
+                  } else {
+                    const dataset = availableDatasets.find(ds => ds.id === e.target.value);
+                    if (dataset) {
+                      setDefaultDataset({
+                        datasetId: dataset.id,
+                        projectId: dataset.projectId
+                      });
+                    }
+                  }
+                }}
+                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              >
+                <option value="">-- Select Dataset --</option>
+                {availableDatasets.map(dataset => (
+                  <option key={dataset.id} value={dataset.id}>{dataset.id}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center">
+              <label htmlFor="queryLocation" className="block text-sm font-medium text-gray-700 mr-2 w-64">
+                Query Execution Location:
+              </label>
+              <select
+                id="queryLocation"
+                value={queryLocation || ''}
+                onChange={(e) => setQueryLocation(e.target.value || null)}
+                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              >
+                <option value="">-- Select Location --</option>
+                {locationOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
