@@ -12,7 +12,20 @@ const windowProjects = new Map();
 // Function to prompt for project ID
 async function promptForProjectId() {
   return new Promise((resolve) => {
-    // Create a small browser window for the prompt
+    // Set up IPC for the prompt window
+    const preloadScript = `
+      const { contextBridge, ipcRenderer } = require('electron');
+      
+      contextBridge.exposeInMainWorld('electronAPI', {
+        submitProjectId: (projectId) => ipcRenderer.send('submit-project-id', projectId)
+      });
+    `;
+    
+    // Write preload script to a temporary file
+    const preloadPath = path.join(app.getPath('temp'), 'project-id-preload.js');
+    fs.writeFileSync(preloadPath, preloadScript);
+    
+    // Create a small browser window for the prompt with preload script
     const promptWindow = new BrowserWindow({
       width: 400,
       height: 200,
@@ -26,6 +39,7 @@ async function promptForProjectId() {
         nodeIntegration: false,
         contextIsolation: true,
         enableRemoteModule: false,
+        preload: preloadPath
       }
     });
     
@@ -111,25 +125,6 @@ async function promptForProjectId() {
       </body>
       </html>
     `;
-    
-    // Set up IPC for the prompt window
-    const preloadScript = `
-      const { contextBridge, ipcRenderer } = require('electron');
-      
-      contextBridge.exposeInMainWorld('electronAPI', {
-        submitProjectId: (projectId) => ipcRenderer.send('submit-project-id', projectId)
-      });
-    `;
-    
-    // Write preload script to a temporary file
-    const preloadPath = path.join(app.getPath('temp'), 'project-id-preload.js');
-    fs.writeFileSync(preloadPath, preloadScript);
-    
-    // Update webPreferences to use the preload script
-    promptWindow.webPreferences = {
-      ...promptWindow.webPreferences,
-      preload: preloadPath
-    };
     
     // Load HTML content
     promptWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
