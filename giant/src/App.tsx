@@ -35,14 +35,41 @@ function App() {
   const [defaultDataset, setDefaultDataset] = useState<{datasetId: string, projectId?: string} | null>(null);
   const [queryLocation, setQueryLocation] = useState<string | null>(null);
   
-  // Define location options
+  // Define location options with specific regions
   const locationOptions = [
-    { value: 'US', label: 'US' },
-    { value: 'EU', label: 'EU' },
-    { value: 'ASIA', label: 'Asia' },
-    { value: 'AUSTRALIA', label: 'Australia' },
-    { value: 'EUROPE', label: 'Europe' },
-    { value: 'NORTH_AMERICA', label: 'North America' }
+    // US regions
+    { value: 'us-central1', label: 'us-central1 (Iowa)' },
+    { value: 'us-east1', label: 'us-east1 (South Carolina)' },
+    { value: 'us-east4', label: 'us-east4 (Northern Virginia)' },
+    { value: 'us-west1', label: 'us-west1 (Oregon)' },
+    { value: 'us-west2', label: 'us-west2 (Los Angeles)' },
+    { value: 'us-west3', label: 'us-west3 (Salt Lake City)' },
+    { value: 'us-west4', label: 'us-west4 (Las Vegas)' },
+    
+    // Europe regions
+    { value: 'europe-west1', label: 'europe-west1 (Belgium)' },
+    { value: 'europe-west2', label: 'europe-west2 (London)' },
+    { value: 'europe-west3', label: 'europe-west3 (Frankfurt)' },
+    { value: 'europe-west4', label: 'europe-west4 (Netherlands)' },
+    { value: 'europe-west6', label: 'europe-west6 (Zurich)' },
+    
+    // Asia regions
+    { value: 'asia-east1', label: 'asia-east1 (Taiwan)' },
+    { value: 'asia-east2', label: 'asia-east2 (Hong Kong)' },
+    { value: 'asia-northeast1', label: 'asia-northeast1 (Tokyo)' },
+    { value: 'asia-northeast2', label: 'asia-northeast2 (Osaka)' },
+    { value: 'asia-northeast3', label: 'asia-northeast3 (Seoul)' },
+    { value: 'asia-south1', label: 'asia-south1 (Mumbai)' },
+    { value: 'asia-southeast1', label: 'asia-southeast1 (Singapore)' },
+    { value: 'asia-southeast2', label: 'asia-southeast2 (Jakarta)' },
+    
+    // Australia regions
+    { value: 'australia-southeast1', label: 'australia-southeast1 (Sydney)' },
+    
+    // Multi-regional options
+    { value: 'US', label: 'US (multi-region)' },
+    { value: 'EU', label: 'EU (multi-region)' },
+    { value: 'ASIA', label: 'Asia (multi-region)' }
   ];
 
   // Save projectId to localStorage whenever it changes
