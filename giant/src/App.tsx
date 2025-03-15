@@ -4,11 +4,25 @@ import SqlEditor from './components/custom/SqlEditor'
 import ResultsTable from './components/custom/ResultsTable'
 import JobInfoTable from './components/custom/JobInfoTable'
 import TabView from './components/custom/TabView'
+import SessionsPane, { Session } from './components/custom/SessionsPane'
+import { v4 as uuidv4 } from 'uuid'
 
 // Check if running in Electron
 const isElectron = window.platform?.isElectron || false;
 
 function App() {
+  // Sessions state
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    // Initialize from localStorage if available
+    const savedSessions = localStorage.getItem('bigquery_sessions');
+    return savedSessions ? JSON.parse(savedSessions) : [];
+  });
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    // Initialize from localStorage if available
+    return localStorage.getItem('bigquery_active_session_id');
+  });
+
+  // Current session data
   const [results, setResults] = useState<any[]>([])
   const [jobInfo, setJobInfo] = useState<any>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -94,6 +108,18 @@ function App() {
     localStorage.setItem('bigquery_show_size_warning', showQuerySizeWarning.toString());
   }, [showQuerySizeWarning]);
   
+  // Save sessions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('bigquery_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+  
+  // Save active session ID to localStorage whenever it changes
+  useEffect(() => {
+    if (activeSessionId) {
+      localStorage.setItem('bigquery_active_session_id', activeSessionId);
+    }
+  }, [activeSessionId]);
+  
   // Fetch datasets when projectId changes
   useEffect(() => {
     const fetchDatasets = async () => {
@@ -146,6 +172,33 @@ function App() {
           const response = await window.electronAPI.executeQuery(query, projectId, defaultDataset || undefined, queryLocation || undefined);
           setJobInfo(response.jobInfo);
           setResults(response.results);
+          
+          // Create or update session
+          const timestamp = new Date();
+          
+          if (activeSessionId) {
+            // Update existing session
+            setSessions(prevSessions => 
+              prevSessions.map(session => 
+                session.id === activeSessionId 
+                  ? { ...session, query, results: response.results, jobInfo: response.jobInfo, updatedAt: timestamp }
+                  : session
+              )
+            );
+          } else {
+            // Create new session
+            const newSession: Session = {
+              id: uuidv4(),
+              name: `Session ${sessions.length + 1}`,
+              query,
+              results: response.results,
+              jobInfo: response.jobInfo,
+              createdAt: timestamp
+            };
+            
+            setSessions(prevSessions => [...prevSessions, newSession]);
+            setActiveSessionId(newSession.id);
+          }
         } else {
           // User cancelled the query
           setLoading(false);
@@ -166,17 +219,86 @@ function App() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+  
+  // Session management functions
+  const handleSessionSelect = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setActiveSessionId(sessionId);
+      // Load session data
+      setResults(session.results || []);
+      setJobInfo(session.jobInfo || null);
+      // Reset to first page
+      setCurrentPage(1);
+    }
+  };
+  
+  const handleSessionCreate = () => {
+    const newSession: Session = {
+      id: uuidv4(),
+      name: `Session ${sessions.length + 1}`,
+      query: '',
+      results: [],
+      jobInfo: null,
+      createdAt: new Date()
+    };
+    
+    setSessions(prevSessions => [...prevSessions, newSession]);
+    setActiveSessionId(newSession.id);
+    // Clear current results and job info
+    setResults([]);
+    setJobInfo(null);
+    // Reset to first page
+    setCurrentPage(1);
+  };
+  
+  const handleSessionDelete = (sessionId: string) => {
+    setSessions(prevSessions => prevSessions.filter(session => session.id !== sessionId));
+    
+    // If the active session was deleted, set active to the first available session or null
+    if (activeSessionId === sessionId) {
+      const remainingSessions = sessions.filter(session => session.id !== sessionId);
+      if (remainingSessions.length > 0) {
+        setActiveSessionId(remainingSessions[0].id);
+        // Load the first session data
+        setResults(remainingSessions[0].results || []);
+        setJobInfo(remainingSessions[0].jobInfo || null);
+      } else {
+        setActiveSessionId(null);
+        // Clear current results and job info
+        setResults([]);
+        setJobInfo(null);
+      }
+      // Reset to first page
+      setCurrentPage(1);
+    }
+  };
 
+
+  // Get current active session
+  const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
-        <h1 className="text-3xl font-bold">Giant</h1>
-        <p className="text-sm mt-2">BigQuery Desktop Client</p>
-      </header>
-      <main>
-        <div className="mb-4">
-          <h2 className="text-2xl font-semibold mb-4">Project Settings</h2>
+    <div className="flex h-screen overflow-hidden">
+      <SessionsPane 
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSessionSelect={handleSessionSelect}
+        onSessionCreate={handleSessionCreate}
+        onSessionDelete={handleSessionDelete}
+      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8">
+          <header className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
+            <h1 className="text-3xl font-bold">Giant</h1>
+            <p className="text-sm mt-2">BigQuery Desktop Client</p>
+            {activeSession && (
+              <p className="text-sm mt-2">Current Session: {activeSession.name}</p>
+            )}
+          </header>
+          <main>
+            <div className="mb-4">
+              <h2 className="text-2xl font-semibold mb-4">Project Settings</h2>
           <div className="flex flex-col space-y-4">
             <div className="flex items-center">
               <label htmlFor="projectId" className="block text-sm font-medium text-gray-700 mr-2 w-64">
@@ -267,7 +389,10 @@ function App() {
         </div>
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">SQL Query</h2>
-          <SqlEditor onExecute={handleExecuteQuery} />
+          <SqlEditor 
+            onExecute={handleExecuteQuery} 
+            initialValue={activeSession?.query || ''}
+          />
         </div>
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Results</h2>
@@ -300,6 +425,8 @@ function App() {
           />
         </div>
       </main>
+        </div>
+      </div>
     </div>
   )
 }
