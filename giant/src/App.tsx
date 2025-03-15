@@ -108,7 +108,21 @@ function App() {
       }
     };
     
+    // Add event listener for project ID changes
+    const handleProjectIdChanged = (event: CustomEvent) => {
+      const newProjectId = event.detail;
+      if (newProjectId) {
+        setProjectId(newProjectId);
+      }
+    };
+    
+    window.addEventListener('project-id-changed', handleProjectIdChanged as EventListener);
     checkWindowProjectId();
+    
+    // Clean up event listener on unmount
+    return () => {
+      window.removeEventListener('project-id-changed', handleProjectIdChanged as EventListener);
+    };
   }, []);
   
   // Save projectId to localStorage whenever it changes

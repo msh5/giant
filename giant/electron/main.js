@@ -474,6 +474,16 @@ ipcMain.handle('set-current-project-id', async (event, projectId) => {
 ipcMain.handle('prompt-for-project-id', async (event, title = 'Enter Project ID') => {
   try {
     const projectId = await promptForProjectId(title);
+    
+    // If a project ID was provided, associate it with the window
+    if (projectId) {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      windowProjects.set(win.id, projectId);
+      
+      // Notify the window that the project ID has changed
+      win.webContents.send('project-id-changed', projectId);
+    }
+    
     return { success: true, projectId };
   } catch (error) {
     console.error('Error prompting for project ID:', error);
