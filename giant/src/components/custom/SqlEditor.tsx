@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-sql';
 import 'ace-builds/src-noconflict/theme-github';
 
 interface SqlEditorProps {
   onExecute: (query: string) => void;
+  initialValue?: string;
 }
 
-const SqlEditor: React.FC<SqlEditorProps> = ({ onExecute }) => {
-  const [query, setQuery] = useState<string>('');
+const SqlEditor: React.FC<SqlEditorProps> = ({ onExecute, initialValue = '' }) => {
+  const [query, setQuery] = useState<string>(initialValue);
+  
+  // Update query when initialValue changes
+  useEffect(() => {
+    setQuery(initialValue);
+  }, [initialValue]);
 
   const handleExecute = () => {
     onExecute(query);
