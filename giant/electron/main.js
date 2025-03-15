@@ -178,6 +178,12 @@ async function createWindow(projectId) {
   // Associate the window with a project ID if provided
   if (projectId) {
     windowProjects.set(win.id, projectId);
+    
+    // Wait for the window to finish loading before sending the project ID
+    win.webContents.on('did-finish-load', () => {
+      // Notify the window that the project ID has changed
+      win.webContents.send('project-id-changed', projectId);
+    });
   }
 
   // In development mode, load from vite dev server
