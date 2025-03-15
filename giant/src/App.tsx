@@ -286,7 +286,10 @@ function App() {
 
   // Handle settings button click
   const handleSettingsClick = () => {
-    setCurrentView('query' === currentView ? 'settings' : 'query');
+    // Only toggle to settings view, don't toggle back to query view
+    if (currentView === 'query') {
+      setCurrentView('settings');
+    }
   };
 
   return (
