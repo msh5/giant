@@ -29,6 +29,21 @@ function App() {
     const savedPref = localStorage.getItem('bigquery_show_size_warning');
     return savedPref === null ? true : savedPref === 'true';
   });
+  
+  // Add new state for default dataset and location (non-persistent)
+  const [availableDatasets, setAvailableDatasets] = useState<Array<{id: string, projectId: string, location: string}>>([]);
+  const [defaultDataset, setDefaultDataset] = useState<{datasetId: string, projectId?: string} | null>(null);
+  const [queryLocation, setQueryLocation] = useState<string | null>(null);
+  
+  // Define location options
+  const locationOptions = [
+    { value: 'US', label: 'US' },
+    { value: 'EU', label: 'EU' },
+    { value: 'ASIA', label: 'Asia' },
+    { value: 'AUSTRALIA', label: 'Australia' },
+    { value: 'EUROPE', label: 'Europe' },
+    { value: 'NORTH_AMERICA', label: 'North America' }
+  ];
 
   // Save projectId to localStorage whenever it changes
   useEffect(() => {
@@ -48,6 +63,26 @@ function App() {
   useEffect(() => {
     localStorage.setItem('bigquery_show_size_warning', showQuerySizeWarning.toString());
   }, [showQuerySizeWarning]);
+  
+  // Fetch datasets when projectId changes
+  useEffect(() => {
+    const fetchDatasets = async () => {
+      if (!projectId || !isElectron || !window.electronAPI) {
+        setAvailableDatasets([]);
+        return;
+      }
+      
+      try {
+        const datasets = await window.electronAPI.listDatasets(projectId);
+        setAvailableDatasets(datasets);
+      } catch (error) {
+        console.error('Error fetching datasets:', error);
+        setAvailableDatasets([]);
+      }
+    };
+    
+    fetchDatasets();
+  }, [projectId]);
 
   const handleExecuteQuery = async (query: string) => {
     setLoading(true)
@@ -58,7 +93,7 @@ function App() {
     try {
       if (isElectron && window.electronAPI) {
         // Estimate query size first
-        const bytesProcessed = await window.electronAPI.estimateQuerySize(query, projectId);
+        const bytesProcessed = await window.electronAPI.estimateQuerySize(query, projectId, defaultDataset || undefined, queryLocation || undefined);
         
         // Check if we should show warning dialog
         let shouldExecute = true;
@@ -78,7 +113,7 @@ function App() {
         
         if (shouldExecute) {
           // Execute the query if user confirmed or warning was skipped
-          const data = await window.electronAPI.executeQuery(query, projectId);
+          const data = await window.electronAPI.executeQuery(query, projectId, defaultDataset || undefined, queryLocation || undefined);
           setResults(data);
         } else {
           // User cancelled the query
@@ -152,6 +187,50 @@ function App() {
               <label htmlFor="showQuerySizeWarning" className="ml-2 block text-sm text-gray-900">
                 Always show query size warning dialog
               </label>
+            </div>
+            <div className="flex items-center">
+              <label htmlFor="defaultDataset" className="block text-sm font-medium text-gray-700 mr-2 w-64">
+                Default Dataset:
+              </label>
+              <select
+                id="defaultDataset"
+                value={defaultDataset?.datasetId || ''}
+                onChange={(e) => {
+                  if (e.target.value === '') {
+                    setDefaultDataset(null);
+                  } else {
+                    const dataset = availableDatasets.find(ds => ds.id === e.target.value);
+                    if (dataset) {
+                      setDefaultDataset({
+                        datasetId: dataset.id,
+                        projectId: dataset.projectId
+                      });
+                    }
+                  }
+                }}
+                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              >
+                <option value="">-- Select Dataset --</option>
+                {availableDatasets.map(dataset => (
+                  <option key={dataset.id} value={dataset.id}>{dataset.id}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center">
+              <label htmlFor="queryLocation" className="block text-sm font-medium text-gray-700 mr-2 w-64">
+                Query Execution Location:
+              </label>
+              <select
+                id="queryLocation"
+                value={queryLocation || ''}
+                onChange={(e) => setQueryLocation(e.target.value || null)}
+                className="mt-1 block w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+              >
+                <option value="">-- Select Location --</option>
+                {locationOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

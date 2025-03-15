@@ -56,7 +56,7 @@ app.on('window-all-closed', () => {
 });
 
 // Handle BigQuery query execution
-ipcMain.handle('execute-query', async (event, query, projectId) => {
+ipcMain.handle('execute-query', async (event, query, projectId, defaultDataset, location) => {
   try {
     // Create or update BigQuery client with the provided project ID
     bigquery = new BigQuery({
@@ -64,7 +64,26 @@ ipcMain.handle('execute-query', async (event, query, projectId) => {
       projectId: projectId || process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
     });
     
-    const [rows] = await bigquery.query(query);
+    // Create query job with options
+    const options = {
+      query: query
+    };
+    
+    // Add default dataset if provided
+    if (defaultDataset) {
+      options.defaultDataset = {
+        datasetId: defaultDataset.datasetId,
+        projectId: defaultDataset.projectId || projectId
+      };
+    }
+    
+    // Add location if provided
+    if (location) {
+      options.location = location;
+    }
+    
+    // Execute query with options
+    const [rows] = await bigquery.query(options);
     return rows;
   } catch (error) {
     console.error('Error executing query:', error);
@@ -73,18 +92,34 @@ ipcMain.handle('execute-query', async (event, query, projectId) => {
 });
 
 // Handle dry run query to estimate size
-ipcMain.handle('estimate-query-size', async (event, query, projectId) => {
+ipcMain.handle('estimate-query-size', async (event, query, projectId, defaultDataset, location) => {
   try {
     // Create or update BigQuery client with the provided project ID
     bigquery = new BigQuery({
       projectId: projectId || process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
     });
     
-    // Create a dry run job to estimate query size
-    const [job] = await bigquery.createQueryJob({
+    // Create options for dry run
+    const options = {
       query: query,
-      dryRun: true,
-    });
+      dryRun: true
+    };
+    
+    // Add default dataset if provided
+    if (defaultDataset) {
+      options.defaultDataset = {
+        datasetId: defaultDataset.datasetId,
+        projectId: defaultDataset.projectId || projectId
+      };
+    }
+    
+    // Add location if provided
+    if (location) {
+      options.location = location;
+    }
+    
+    // Create a dry run job to estimate query size
+    const [job] = await bigquery.createQueryJob(options);
     
     // Return the total bytes processed
     return job.metadata.statistics.totalBytesProcessed;
@@ -120,6 +155,29 @@ Do you want to continue?`,
     };
   } catch (error) {
     console.error('Error showing confirmation dialog:', error);
+    throw error;
+  }
+});
+
+// Handle listing datasets for a project
+ipcMain.handle('list-datasets', async (event, projectId) => {
+  try {
+    // Create or update BigQuery client with the provided project ID
+    bigquery = new BigQuery({
+      projectId: projectId || process.env.GOOGLE_CLOUD_PROJECT || 'your-project-id',
+    });
+    
+    // Get datasets for the project
+    const [datasets] = await bigquery.getDatasets();
+    
+    // Return dataset information
+    return datasets.map(dataset => ({
+      id: dataset.id,
+      projectId: dataset.projectId,
+      location: dataset.location
+    }));
+  } catch (error) {
+    console.error('Error listing datasets:', error);
     throw error;
   }
 });

@@ -7,9 +7,10 @@ import './index.css'
 declare global {
   interface Window {
     electronAPI?: {
-      executeQuery: (query: string, projectId: string) => Promise<any[]>;
-      estimateQuerySize: (query: string, projectId: string) => Promise<string>;
+      executeQuery: (query: string, projectId: string, defaultDataset?: {datasetId: string, projectId?: string}, location?: string) => Promise<any[]>;
+      estimateQuerySize: (query: string, projectId: string, defaultDataset?: {datasetId: string, projectId?: string}, location?: string) => Promise<string>;
       confirmLargeQuery: (bytesProcessed: string, warnSizeBytes: string, showAlways: boolean) => Promise<{confirmed: boolean, dontShowAgain: boolean}>;
+      listDatasets: (projectId: string) => Promise<Array<{id: string, projectId: string, location: string}>>;
     };
     platform?: {
       isElectron: boolean;
