@@ -35,10 +35,6 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
 
   return (
     <div className={`sessions-pane border-r border-gray-200 bg-gray-50 ${isCollapsed ? 'w-12' : 'w-64'} transition-all duration-300 flex flex-col`}>
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        {!isCollapsed && <h2 className="text-lg font-semibold">Sessions</h2>}
-      </div>
-      
       {!isCollapsed && (
         <>
           <div className="p-3 border-b border-gray-200">

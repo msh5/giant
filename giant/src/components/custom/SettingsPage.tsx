@@ -44,11 +44,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-sm mt-2">Configure your BigQuery Desktop Client</p>
-      </header>
-
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Project Settings</h2>
         <div className="flex flex-col space-y-4">

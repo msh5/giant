@@ -234,6 +234,8 @@ function App() {
       setJobInfo(session.jobInfo || null);
       // Reset to first page
       setCurrentPage(1);
+      // Switch to query view if in settings view
+      setCurrentView('query');
     }
   };
   
@@ -315,13 +317,6 @@ function App() {
           />
         ) : (
           <div className="container mx-auto px-4 py-8">
-            <header className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
-              <h1 className="text-3xl font-bold">Giant</h1>
-              <p className="text-sm mt-2">BigQuery Desktop Client</p>
-              {activeSession && (
-                <p className="text-sm mt-2">Current Session: {activeSession.name}</p>
-              )}
-            </header>
             <main>
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4">SQL Query</h2>
