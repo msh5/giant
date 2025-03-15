@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import SqlEditor from './components/custom/SqlEditor'
 import ResultsTable from './components/custom/ResultsTable'
+import JobInfoTable from './components/custom/JobInfoTable'
+import TabView from './components/custom/TabView'
 
 // Check if running in Electron
 const isElectron = window.platform?.isElectron || false;
 
 function App() {
   const [results, setResults] = useState<any[]>([])
+  const [jobInfo, setJobInfo] = useState<any>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -140,8 +143,9 @@ function App() {
         
         if (shouldExecute) {
           // Execute the query if user confirmed or warning was skipped
-          const data = await window.electronAPI.executeQuery(query, projectId, defaultDataset || undefined, queryLocation || undefined);
-          setResults(data);
+          const response = await window.electronAPI.executeQuery(query, projectId, defaultDataset || undefined, queryLocation || undefined);
+          setJobInfo(response.jobInfo);
+          setResults(response.results);
         } else {
           // User cancelled the query
           setLoading(false);
@@ -267,13 +271,32 @@ function App() {
         </div>
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Results</h2>
-          <ResultsTable 
-            data={results} 
-            loading={loading} 
-            error={error} 
-            currentPage={currentPage}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
+          <TabView
+            tabs={[
+              {
+                label: 'Job Information',
+                content: (
+                  <JobInfoTable
+                    jobInfo={jobInfo}
+                    loading={loading}
+                    error={error}
+                  />
+                )
+              },
+              {
+                label: 'Query Results',
+                content: (
+                  <ResultsTable 
+                    data={results} 
+                    loading={loading} 
+                    error={error} 
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                  />
+                )
+              }
+            ]}
           />
         </div>
       </main>

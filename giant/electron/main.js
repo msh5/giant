@@ -82,9 +82,15 @@ ipcMain.handle('execute-query', async (event, query, projectId, defaultDataset, 
       options.location = location;
     }
     
-    // Execute query with options
-    const [rows] = await bigquery.query(options);
-    return rows;
+    // Execute query with options and get job information
+    const [job] = await bigquery.createQueryJob(options);
+    const [rows] = await job.getQueryResults();
+    
+    // Return both job metadata and query results
+    return {
+      jobInfo: job.metadata,
+      results: rows
+    };
   } catch (error) {
     console.error('Error executing query:', error);
     throw error;
