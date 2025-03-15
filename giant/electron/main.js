@@ -2,14 +2,35 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { BigQuery } = require('@google-cloud/bigquery');
 const fs = require('fs');
+const { URL } = require('url');
+
+// We'll dynamically import electron-store since it's an ESM module
+let Store;
 
 // We'll create the BigQuery client dynamically when executing queries
 let bigquery = null;
 
+// Dynamically import electron-store
+(async () => {
+  try {
+    const module = await import('electron-store');
+    Store = module.default;
+  } catch (error) {
+    console.error('Failed to import electron-store:', error);
+  }
+})();
+
+// Project file extension and content type
+const PROJECT_FILE_EXT = '.giantproj';
+const PROJECT_CONTENT_TYPE = 'application/x-giant-project';
+
+// Track windows and their associated projects
+const windowProjects = new Map();
+
 let mainWindow;
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function createWindow(projectPath = null) {
+  const win = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -19,37 +40,87 @@ function createWindow() {
     },
   });
 
+  // Associate the window with a project if provided
+  if (projectPath) {
+    windowProjects.set(win.id, projectPath);
+  }
+
   // In development mode, load from vite dev server
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    win.loadURL('http://localhost:5173');
+    win.webContents.openDevTools();
   } else {
     // In production, load from built files
     const indexPath = path.join(__dirname, '../dist/index.html');
     
     // Check if the file exists
     if (fs.existsSync(indexPath)) {
-      mainWindow.loadFile(indexPath);
+      win.loadFile(indexPath);
     } else {
       console.error(`Error: Could not find ${indexPath}`);
       // Fallback to development URL if dist file doesn't exist
-      mainWindow.loadURL('http://localhost:5173');
-      mainWindow.webContents.openDevTools();
+      win.loadURL('http://localhost:5173');
+      win.webContents.openDevTools();
     }
   }
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  // Clean up when window is closed
+  win.on('closed', () => {
+    windowProjects.delete(win.id);
   });
+
+  return win;
 }
 
 app.whenReady().then(() => {
-  createWindow();
+  // Check if we have a project file in the arguments
+  const projectPath = process.argv.find(arg => arg.endsWith(PROJECT_FILE_EXT));
+  
+  // Create main window with project if provided
+  mainWindow = createWindow(projectPath);
+
+  // Register file extension handler
+  if (process.platform === 'win32') {
+    app.setAsDefaultProtocolClient('giant');
+  }
+
+  // Handle file open events (macOS)
+  app.on('open-file', (event, path) => {
+    event.preventDefault();
+    openProjectInWindow(path);
+  });
 
   app.on('activate', () => {
-    if (mainWindow === null) createWindow();
+    // On macOS it's common to re-create a window when the dock icon is clicked
+    if (BrowserWindow.getAllWindows().length === 0) {
+      mainWindow = createWindow();
+    }
   });
 });
+
+// Function to open a project in a window
+function openProjectInWindow(projectPath, win = null) {
+  // If no window is provided, check if there's already a window for this project
+  if (!win) {
+    const windows = BrowserWindow.getAllWindows();
+    for (const existingWin of windows) {
+      if (windowProjects.get(existingWin.id) === projectPath) {
+        existingWin.focus();
+        return;
+      }
+    }
+    // No existing window for this project, create a new one
+    win = createWindow(projectPath);
+  }
+
+  // Associate the window with the project
+  windowProjects.set(win.id, projectPath);
+  
+  // Notify the renderer process about the project
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.send('project-opened', projectPath);
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
@@ -185,6 +256,113 @@ ipcMain.handle('list-datasets', async (event, projectId) => {
   } catch (error) {
     console.error('Error listing datasets:', error);
     throw error;
+  }
+});
+
+// Handle saving a project file
+ipcMain.handle('save-project', async (event, projectData) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    
+    // Get the current project path or ask for a new one
+    let projectPath = windowProjects.get(win.id);
+    
+    if (!projectPath) {
+      const { canceled, filePath } = await dialog.showSaveDialog(win, {
+        title: 'Save Project',
+        defaultPath: projectData.projectId + PROJECT_FILE_EXT,
+        filters: [
+          { name: 'Giant Project Files', extensions: [PROJECT_FILE_EXT.substring(1)] }
+        ]
+      });
+      
+      if (canceled || !filePath) {
+        return { success: false, message: 'Save canceled' };
+      }
+      
+      projectPath = filePath;
+      windowProjects.set(win.id, projectPath);
+    }
+    
+    // Save the project data to the file
+    fs.writeFileSync(projectPath, JSON.stringify(projectData, null, 2));
+    
+    return { success: true, path: projectPath };
+  } catch (error) {
+    console.error('Error saving project:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle opening a project file
+ipcMain.handle('open-project', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Open Project',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Giant Project Files', extensions: [PROJECT_FILE_EXT.substring(1)] }
+      ]
+    });
+    
+    if (canceled || filePaths.length === 0) {
+      return { success: false, message: 'Open canceled' };
+    }
+    
+    const projectPath = filePaths[0];
+    
+    // Check if this project is already open in another window
+    const windows = BrowserWindow.getAllWindows();
+    for (const existingWin of windows) {
+      if (existingWin.id !== win.id && windowProjects.get(existingWin.id) === projectPath) {
+        existingWin.focus();
+        return { success: false, message: 'Project already open in another window' };
+      }
+    }
+    
+    // Read the project data
+    const projectData = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+    
+    // Associate the window with the project
+    windowProjects.set(win.id, projectPath);
+    
+    return { success: true, path: projectPath, data: projectData };
+  } catch (error) {
+    console.error('Error opening project:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle creating a new project window
+ipcMain.handle('new-project-window', async (event) => {
+  try {
+    createWindow();
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating new project window:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Handle getting the current project path
+ipcMain.handle('get-current-project', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const projectPath = windowProjects.get(win.id);
+    
+    if (!projectPath) {
+      return { success: false, message: 'No project associated with this window' };
+    }
+    
+    // Read the project data
+    const projectData = JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+    
+    return { success: true, path: projectPath, data: projectData };
+  } catch (error) {
+    console.error('Error getting current project:', error);
+    return { success: false, message: error.message };
   }
 });
 

@@ -12,6 +12,9 @@ import { v4 as uuidv4 } from 'uuid'
 const isElectron = window.platform?.isElectron || false;
 
 function App() {
+  // Project file state
+  const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
+  
   // View state
   const [currentView, setCurrentView] = useState<'query' | 'settings'>('query');
   
@@ -32,7 +35,7 @@ function App() {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [pageSize, setPageSize] = useState<number>(10)
+  const pageSize = 10
   const [projectId, setProjectId] = useState<string>(() => {
     // Initialize from localStorage if available
     return localStorage.getItem('bigquery_project_id') || '';
@@ -143,6 +146,90 @@ function App() {
     
     fetchDatasets();
   }, [projectId]);
+  
+  // Check if we have a project to load on startup
+  useEffect(() => {
+    const loadProjectOnStartup = async () => {
+      if (isElectron && window.electronAPI) {
+        try {
+          const result = await window.electronAPI.getCurrentProject();
+          if (result.success && result.data) {
+            // Load project settings
+            if (result.data.projectId) {
+              setProjectId(result.data.projectId);
+            }
+            if (result.data.warnSizeBytes) {
+              setWarnSizeBytes(result.data.warnSizeBytes);
+            }
+            if (result.data.showQuerySizeWarning !== undefined) {
+              setShowQuerySizeWarning(result.data.showQuerySizeWarning);
+            }
+            if (result.data.defaultDataset) {
+              setDefaultDataset(result.data.defaultDataset);
+            }
+            if (result.data.queryLocation) {
+              setQueryLocation(result.data.queryLocation);
+            }
+            if (result.data.sessions) {
+              setSessions(result.data.sessions);
+            }
+            if (result.data.activeSessionId) {
+              setActiveSessionId(result.data.activeSessionId);
+            }
+            
+            setCurrentProjectPath(result.path || null);
+          }
+        } catch (error) {
+          console.error('Error loading project on startup:', error);
+        }
+      }
+    };
+    
+    loadProjectOnStartup();
+    
+    // Listen for project-opened events
+    const handleProjectOpened = async () => {
+      if (isElectron && window.electronAPI) {
+        try {
+          const result = await window.electronAPI.getCurrentProject();
+          if (result.success && result.data) {
+            // Load project settings (same as above)
+            if (result.data.projectId) {
+              setProjectId(result.data.projectId);
+            }
+            if (result.data.warnSizeBytes) {
+              setWarnSizeBytes(result.data.warnSizeBytes);
+            }
+            if (result.data.showQuerySizeWarning !== undefined) {
+              setShowQuerySizeWarning(result.data.showQuerySizeWarning);
+            }
+            if (result.data.defaultDataset) {
+              setDefaultDataset(result.data.defaultDataset);
+            }
+            if (result.data.queryLocation) {
+              setQueryLocation(result.data.queryLocation);
+            }
+            if (result.data.sessions) {
+              setSessions(result.data.sessions);
+            }
+            if (result.data.activeSessionId) {
+              setActiveSessionId(result.data.activeSessionId);
+            }
+            
+            setCurrentProjectPath(result.path || null);
+          }
+        } catch (error) {
+          console.error('Error handling project-opened event:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('project-opened', handleProjectOpened);
+    
+    return () => {
+      window.removeEventListener('project-opened', handleProjectOpened);
+    };
+  }, []);
 
   const handleExecuteQuery = async (query: string) => {
     setLoading(true)
@@ -284,6 +371,83 @@ function App() {
   // Get current active session
   const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : null;
 
+  // Handle saving the current project
+  const handleSaveProject = async () => {
+    if (isElectron && window.electronAPI) {
+      try {
+        // Prepare project data
+        const projectData = {
+          projectId,
+          warnSizeBytes,
+          showQuerySizeWarning,
+          defaultDataset,
+          queryLocation,
+          sessions,
+          activeSessionId
+        };
+        
+        const result = await window.electronAPI.saveProject(projectData);
+        if (result.success) {
+          setCurrentProjectPath(result.path || null);
+        } else {
+          console.error('Error saving project:', result.message);
+        }
+      } catch (error) {
+        console.error('Error saving project:', error);
+      }
+    }
+  };
+  
+  // Handle opening a project
+  const handleOpenProject = async () => {
+    if (isElectron && window.electronAPI) {
+      try {
+        const result = await window.electronAPI.openProject();
+        if (result.success && result.data) {
+          // Load project settings
+          if (result.data.projectId) {
+            setProjectId(result.data.projectId);
+          }
+          if (result.data.warnSizeBytes) {
+            setWarnSizeBytes(result.data.warnSizeBytes);
+          }
+          if (result.data.showQuerySizeWarning !== undefined) {
+            setShowQuerySizeWarning(result.data.showQuerySizeWarning);
+          }
+          if (result.data.defaultDataset) {
+            setDefaultDataset(result.data.defaultDataset);
+          }
+          if (result.data.queryLocation) {
+            setQueryLocation(result.data.queryLocation);
+          }
+          if (result.data.sessions) {
+            setSessions(result.data.sessions);
+          }
+          if (result.data.activeSessionId) {
+            setActiveSessionId(result.data.activeSessionId);
+          }
+          
+          setCurrentProjectPath(result.path || null);
+        } else if (!result.success && result.message) {
+          console.error('Error opening project:', result.message);
+        }
+      } catch (error) {
+        console.error('Error opening project:', error);
+      }
+    }
+  };
+  
+  // Handle creating a new project window
+  const handleNewProjectWindow = async () => {
+    if (isElectron && window.electronAPI) {
+      try {
+        await window.electronAPI.newProjectWindow();
+      } catch (error) {
+        console.error('Error creating new project window:', error);
+      }
+    }
+  };
+
   // Handle settings button click
   const handleSettingsClick = () => {
     // Only toggle to settings view, don't toggle back to query view
@@ -301,6 +465,10 @@ function App() {
         onSessionCreate={handleSessionCreate}
         onSessionDelete={handleSessionDelete}
         onSettingsClick={handleSettingsClick}
+        currentProjectPath={currentProjectPath}
+        onSaveProject={handleSaveProject}
+        onOpenProject={handleOpenProject}
+        onNewProjectWindow={handleNewProjectWindow}
       />
       <div className="flex-1 overflow-y-auto">
         {currentView === 'settings' ? (
@@ -366,17 +534,6 @@ function App() {
   )
 }
 
-// Helper function to format bytes to human-readable format
-function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
+// Helper function to format bytes to human-readable format is now in main.js
 
 export default App
