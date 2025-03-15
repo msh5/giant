@@ -85,13 +85,6 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
             )}
           </div>
           <div className="p-3 border-t border-gray-200 flex items-center justify-between">
-            <button 
-              onClick={toggleCollapse}
-              className="p-1 rounded hover:bg-gray-200"
-              aria-label={isCollapsed ? "Expand sessions pane" : "Collapse sessions pane"}
-            >
-              {isCollapsed ? '→' : '←'}
-            </button>
             {onSettingsClick && (
               <button
                 onClick={onSettingsClick}
@@ -104,6 +97,13 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
                 Settings
               </button>
             )}
+            <button 
+              onClick={toggleCollapse}
+              className="p-1 rounded hover:bg-gray-200"
+              aria-label={isCollapsed ? "Expand sessions pane" : "Collapse sessions pane"}
+            >
+              {isCollapsed ? '→' : '←'}
+            </button>
           </div>
         </>
       )}
@@ -129,13 +129,6 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
               {session.name.charAt(0).toUpperCase()}
             </button>
           ))}
-          <button 
-            onClick={toggleCollapse}
-            className="p-1 rounded hover:bg-gray-200 mb-2"
-            aria-label={isCollapsed ? "Expand sessions pane" : "Collapse sessions pane"}
-          >
-            {isCollapsed ? '→' : '←'}
-          </button>
           {onSettingsClick && (
             <button
               onClick={onSettingsClick}
@@ -148,6 +141,13 @@ const SessionsPane: React.FC<SessionsPaneProps> = ({
               </svg>
             </button>
           )}
+          <button 
+            onClick={toggleCollapse}
+            className="p-1 rounded hover:bg-gray-200 mb-2"
+            aria-label={isCollapsed ? "Expand sessions pane" : "Collapse sessions pane"}
+          >
+            {isCollapsed ? '→' : '←'}
+          </button>
         </div>
       )}
     </div>

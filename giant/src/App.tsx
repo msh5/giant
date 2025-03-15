@@ -5,7 +5,6 @@ import ResultsTable from './components/custom/ResultsTable'
 import JobInfoTable from './components/custom/JobInfoTable'
 import TabView from './components/custom/TabView'
 import SessionsPane, { Session } from './components/custom/SessionsPane'
-import SettingsPane from './components/custom/SettingsPane'
 import SettingsPage from './components/custom/SettingsPage'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -290,22 +289,14 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="flex">
-        <SettingsPane 
-          isActive={currentView === 'settings'}
-          onSettingsClick={handleSettingsClick}
-        />
-        {currentView === 'query' && (
-          <SessionsPane 
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSessionSelect={handleSessionSelect}
-            onSessionCreate={handleSessionCreate}
-            onSessionDelete={handleSessionDelete}
-            onSettingsClick={handleSettingsClick}
-          />
-        )}
-      </div>
+      <SessionsPane 
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSessionSelect={handleSessionSelect}
+        onSessionCreate={handleSessionCreate}
+        onSessionDelete={handleSessionDelete}
+        onSettingsClick={handleSettingsClick}
+      />
       <div className="flex-1 overflow-y-auto">
         {currentView === 'settings' ? (
           <SettingsPage 
